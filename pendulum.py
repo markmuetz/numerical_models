@@ -21,23 +21,38 @@ def run_pendulum(th0, g, r, dt=0.001, nt=10000, method='ct'):
     if method == 'ct':
         th_curr = th0
         thetas = [th_old, th_curr]
+        omegas = [0, 0]
         for t in times[2:]:
             th_new = 2 * th_curr - th_old - dt**2 * g / r * np.sin(th_curr)
+            omegas.append((th_new - th_old) / (2 * dt))
             th_old = th_curr
             th_curr = th_new
             thetas.append(th_new)
+
     elif method == 'two_step':
         omega_old = 0
         omega_curr = 0
         thetas = [th_old]
+        omegas = [omega_old]
         for t in times[1:]:
             th_curr = th_old + dt * omega_curr
             omega_curr = omega_old - dt * g / r * np.sin(th_curr)
-            thetas.append(th_curr)
+
             omega_old = omega_curr
             th_old = th_curr
 
-    return times, np.array(thetas)
+            thetas.append(th_curr)
+            omegas.append(omega_curr)
+
+    return times, np.array(thetas), np.array(omegas)
+
+
+def pe(m, g, l, theta):
+    return m * g * l * (1 - np.cos(theta))
+
+
+def ke(m, g, l, omega):
+    return 0.5 * m * (l * omega)**2
 
 
 def plot_thetas(th0, times, thetas, g, r, method):
@@ -57,18 +72,31 @@ def plot_thetas(th0, times, thetas, g, r, method):
     plt.plot(times, th0 * np.cos(times * np.sqrt(g / r)))
     plt.show()
 
+def plot_energy(th0, times, thetas, omegas, m, g, r, method):
+    plt.figure()
+
+    plt.title(method)
+    pes = pe(m, g, r, thetas)
+    kes = ke(m, g, r, omegas)
+    #plt.plot(times, pes)
+    #plt.plot(times, kes)
+    plt.plot(times, pes + kes)
+    plt.show()
+
 
 def main():
     """Entry point."""
     g = pc.g
     r = 1
     th0 = np.pi / 2
+    m = 1.
 
     res = {}
     for method in 'ct', 'two_step':
-        times, thetas = run_pendulum(th0, g, r, method=method)
-        res[method] = (times, thetas)
-        plot_thetas(th0, times, thetas, g, r, method)
+        times, thetas, omegas = run_pendulum(th0, g, r, method=method)
+        res[method] = (times, thetas, omegas)
+        # plot_thetas(th0, times, thetas, g, r, method)
+        plot_energy(th0, times, thetas, omegas, m, g, r, method)
     return res
 
 
